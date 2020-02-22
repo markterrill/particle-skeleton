@@ -65,10 +65,9 @@ void setup() {
 
     Serial.println("Setup checkpoint 4 after Particle.connect");
 
-    // Tiny delay to completely avoid race conditions with the publish below
-    delay(2000);
-
     Particle.publish("debug", "Setup checkpoint 5 finished", 60, PRIVATE);
+    Particle.publish("getTestSubscribe", "inside setup", 30, PRIVATE);
+
 
 }
 
