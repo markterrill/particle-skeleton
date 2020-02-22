@@ -1,6 +1,6 @@
 #include "application.h"
 
-SYSTEM_MODE(SEMI_AUTOMATIC);
+//SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
 
 STARTUP(prepare());
@@ -14,16 +14,35 @@ unsigned long last5SecondLoop = 0UL;
 bool boolConnected = false; // whether we've got wifi online to Particle Cloud
 
 void prepare() {
-    WiFi.setListenTimeout(300); // 5 mins
+    WiFi.setListenTimeout(60 * 1); // 1 mins
     WiFi.selectAntenna(ANT_INTERNAL);
 }
+
+
+void timer_60sec_connection()
+{
+    Serial.println("60 second connection timer expired II");
+
+    if (!Particle.connected()){
+        Serial.println("Particle.connected timed out, going to listen mode");
+        // the connection timed out
+        WiFi.listen(true); // go to listen mode
+    } else {
+        Serial.println("All ok, timer saw its connected");
+    }
+}
+
+Timer timerConnection(6000, timer_60sec_connection, true); // one shot timer for connectivity
+
 
 
 byte mac[6];
 
 void setup() {
 
-    Serial.begin(115200);
+    
+
+    Serial.begin(9600);
     // Delay to start particle serial monitor
     delay (5000);
 
@@ -36,6 +55,8 @@ void setup() {
 
     // Let's get going
     Serial.println("Setup checkpoint 1 before WiFi.on");
+
+
 
     WiFi.on();
     delay(300);
@@ -55,18 +76,32 @@ void setup() {
 
     Serial.println("Setup checkpoint 2 before WiFi.connect");
 
-    WiFi.connect();
+    //WiFi.connect();
 
     delay(300);
 
     Serial.println("Setup checkpoint 3 before Particle.connect");
 
-    Particle.connect();
+    //Particle.connect();
 
     Serial.println("Setup checkpoint 4 after Particle.connect");
 
     Particle.publish("debug", "Setup checkpoint 5 finished", 60, PRIVATE);
     Particle.publish("getTestSubscribe", "inside setup", 30, PRIVATE);
+
+
+    if (WiFi.ready()){
+       Serial.println("WiFi Ready, just before MDNS");
+
+    }
+    else if (!WiFi.listening()){
+
+       Serial.println("Going to (timer) waitFor Particle.connected for 60s");
+       timerConnection.start();
+
+    } else {
+        Serial.println("Skipping the particle.connected waitFor");
+    }
 
 
 }
@@ -110,6 +145,11 @@ void loop() {
         } else {
           Serial.println("Particle.connected = FALSE");
           boolConnected = false;
+
+          if (WiFi.connecting() && !timerConnection.isActive()){
+              Serial.println("Noted wifi.connecting");
+              timerConnection.start();
+          }
         }
     }
 }
